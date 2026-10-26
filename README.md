@@ -6,6 +6,8 @@ computer's speakers or headphones.
 Click **型** to open the dropdown, see the connection and audio output, and
 start or stop monitoring.
 
+![Kata bar icon and monitoring dropdown](assets/screenshot.png)
+
 ## Requirements
 
 - Omarchy with the Quattro shell
