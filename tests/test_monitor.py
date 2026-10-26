@@ -23,6 +23,12 @@ class MonitorTests(unittest.TestCase):
             m.disable()
             self.assertEqual(call.call_args.args, ('unload-module', '4'))
 
+    def test_development_id_routes_can_still_be_stopped(self):
+        rows = '5\tmodule-loopback\tsink_input_properties=' + m.LEGACY_MARKER
+        with patch.object(m, 'pactl', side_effect=[rows, '']) as call:
+            m.disable()
+            self.assertEqual(call.call_args.args, ('unload-module', '5'))
+
     def test_katana_default_output_falls_back_to_computer(self):
         with patch.object(m, 'sources', return_value=[{'name': 'katana_capture'}]), \
              patch.object(m, 'listing', return_value=[{'name': 'usb_BOSS_KATANA_GO'}, {'name': 'speakers'}]), \

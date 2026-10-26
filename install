@@ -1,16 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 project_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-plugin_dir="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/local.katana-go"
+plugin_dir="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/io.github.mattbudde.kata"
 for dependency in python3 pactl omarchy omarchy-shell; do
   command -v "$dependency" >/dev/null || { echo "Missing dependency: $dependency" >&2; exit 1; }
 done
+if [[ -d "$plugin_dir/.git" && "$project_dir" != "$plugin_dir" ]]; then
+  echo "Plugin is git-managed; use: omarchy plugin update io.github.mattbudde.kata" >&2
+  exit 1
+fi
 omarchy plugin validate "$project_dir"
 mkdir -p "$plugin_dir"
-for file in manifest.json BarWidget.qml katana-go.py README.md; do
+for file in manifest.json BarWidget.qml katana-go.py README.md LICENSE; do
   if [[ "$project_dir" != "$plugin_dir" ]]; then
     install -m 644 "$project_dir/$file" "$plugin_dir/$file"
   fi
 done
 omarchy-shell shell rescanPlugins
-omarchy plugin enable local.katana-go --section right --before omarchy.audio
+omarchy plugin enable io.github.mattbudde.kata --section right --before omarchy.audio
+
+# Retire the development widget without deleting its user-owned files.
+if [[ -d "${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/local.katana-go" ]]; then
+  omarchy plugin disable local.katana-go
+fi

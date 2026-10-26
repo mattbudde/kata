@@ -7,7 +7,8 @@ from pathlib import Path
 import subprocess
 import sys
 
-MARKER = 'application.id=local.katana-go'
+MARKER = 'application.id=io.github.mattbudde.kata'
+LEGACY_MARKER = 'application.id=local.katana-go'
 
 
 def pactl(*args):
@@ -34,7 +35,8 @@ def modules():
     for line in pactl('list', 'short', 'modules').splitlines():
         fields = line.split('\t')
         if (len(fields) >= 3 and fields[1] == 'module-loopback'
-                and ('sink_input_properties=' + MARKER) in fields[2].split()):
+                and any(('sink_input_properties=' + marker) in fields[2].split()
+                        for marker in (MARKER, LEGACY_MARKER))):
             result.append({'index': int(fields[0]),
                            'sink': next((v[5:] for v in fields[2].split()
                                          if v.startswith('sink=')), '')})

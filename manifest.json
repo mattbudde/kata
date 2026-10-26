@@ -1,11 +1,22 @@
 {
   "schemaVersion": 1,
-  "id": "local.katana-go",
+  "id": "io.github.mattbudde.kata",
   "name": "Katana GO Monitor",
-  "version": "1.0.0",
-  "author": "kalyx",
+  "version": "1.1.0",
+  "author": "mattbudde",
   "description": "Toggle BOSS Katana GO USB audio through your computer output",
-  "kinds": ["bar-widget"],
-  "entryPoints": {"barWidget": "BarWidget.qml"},
-  "barWidget": {"defaultSection": "right", "allowMultiple": false}
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "defaultSection": "right",
+    "allowMultiple": false,
+    "displayName": "Katana GO",
+    "category": "Audio",
+    "description": "USB monitoring controls and connection details"
+  },
+  "license": "MIT"
 }

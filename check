@@ -6,4 +6,12 @@ python3 -m py_compile katana-go.py
 python3 -m json.tool manifest.json >/dev/null
 bash -n install
 omarchy plugin validate .
+# Quickshell resolves qs.* virtually; qmllint needs the namespace on disk.
+# The temporary link is outside the plugin, which must contain no symlinks.
+qml_import_dir=$(mktemp -d)
+trap 'rm -rf -- "$qml_import_dir"' EXIT
+ln -s "${OMARCHY_PATH:-/usr/share/omarchy}/shell" "$qml_import_dir/qs"
+qml_linter=$(command -v qmllint || true)
+[[ -n "$qml_linter" ]] || qml_linter=/usr/lib/qt6/bin/qmllint
+"$qml_linter" -I "$qml_import_dir" BarWidget.qml
 git diff --check

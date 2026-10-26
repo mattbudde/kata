@@ -1,21 +1,31 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.Ui
+import qs.Ui as Ui
 import qs.Commons
+import qs.Commons as Commons
 
-Item {
+Ui.BarWidget {
     id: root
-    property var bar
+    // The shell injects a dynamic host; its properties are not in QObject metadata.
+    readonly property var hostBar: bar
+    readonly property var fonts: Style.font
     property bool opened: false
     function open() { opened = true; run("status") }
     function close() { opened = false }
-    property var settings
-    property string moduleName: "local.katana-go"
-    property var state: ({active: false, message: "Checking Katana GO…"})
+    function toggle() { opened ? close() : open() }
+    property bool popoutSwitchClosing: false
+    function closeForPopoutSwitch() {
+        popoutSwitchClosing = true
+        close()
+        Qt.callLater(function() { root.popoutSwitchClosing = false })
+    }
+    moduleName: "io.github.mattbudde.kata"
+    property var audioStatus: ({active: false, connected: false, routeExists: false, output: "", message: "Checking Katana GO…"})
     readonly property string helper: Qt.resolvedUrl("katana-go.py").toString().replace(/^file:\/\//, "")
-    implicitWidth: bar && bar.vertical ? 28 : label.implicitWidth + 16
-    implicitHeight: bar ? bar.barSize : 26
+    implicitWidth: button.implicitWidth
+    implicitHeight: button.implicitHeight
 
     property string currentAction: "status"
     property string pendingAction: ""
@@ -35,36 +45,31 @@ Item {
         id: process
         stdout: StdioCollector {
             onStreamFinished: {
-                try { root.state = JSON.parse(text) }
-                catch (e) { root.state = {error: true, message: "Cannot read Katana GO status"} }
+                try { root.audioStatus = JSON.parse(text) }
+                catch (e) { root.audioStatus = {error: true, message: "Cannot read Katana GO status"} }
             }
         }
     }
     Timer { interval: 2000; repeat: true; running: true; onTriggered: root.run("status") }
     Component.onCompleted: run("status")
 
-    Text {
-        id: label
-        anchors.centerIn: parent
-        text: "型"
-        color: root.bar ? root.bar.foreground : "white"
-        opacity: root.state.active ? 1 : 0.55
-        font.family: root.bar ? root.bar.fontFamily : "monospace"
-        font.pixelSize: 17
-    }
-    MouseArea {
+    Ui.WidgetButton {
+        id: button
         anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onClicked: { if (root.opened) root.close(); else root.open() }
-        onEntered: if (root.bar) root.bar.showTooltip(root, "Katana GO · " + root.state.message)
-        onExited: if (root.bar) root.bar.hideTooltip(root)
+        bar: root.hostBar
+        text: "型"
+        fontSize: root.fonts.iconLarge
+        dimmed: !root.audioStatus.active
+        tooltipText: "Katana GO · " + root.audioStatus.message
+        onPressed: function(buttonCode) {
+            if (buttonCode === Qt.LeftButton) root.toggle()
+        }
     }
     Connections {
         target: process
         function onExited(exitCode, exitStatus) {
             if (exitCode !== 0 && root.currentAction !== "status")
-                Quickshell.execDetached(["notify-send", "Katana GO", root.state.message])
+                Quickshell.execDetached(["notify-send", "Katana GO", root.audioStatus.message])
             if (root.pendingAction !== "") {
                 Qt.callLater(function() {
                     var action = root.pendingAction
@@ -75,78 +80,96 @@ Item {
         }
     }
 
-    PopupCard {
+    Ui.KeyboardPanel {
         id: popup
-        anchorItem: root
-        bar: root.bar
+        anchorItem: button
+        bar: root.hostBar
         owner: root
         open: root.opened
-        contentWidth: fittedContentWidth(Style.space(340))
-        contentHeight: fittedContentHeight(details.implicitHeight)
+        contentWidth: popup.fittedContentWidth(Style.space(340))
+        contentHeight: popup.fittedContentHeight(details.implicitHeight)
 
-        Column {
-            id: details
-            width: parent.width
-            spacing: Style.space(12)
+        focusTarget: keyCatcher
 
-            Text {
-                text: "型  Katana GO"
-                color: root.bar ? root.bar.foreground : "white"
-                font.family: root.bar ? root.bar.fontFamily : "monospace"
-                font.pixelSize: Style.font.subtitle
-                font.bold: true
+        Ui.PanelKeyCatcher {
+            id: keyCatcher
+            anchors.fill: parent
+            onCloseRequested: root.close()
+            onTabRequested: function(direction) {
+                if (root.hostBar && typeof root.hostBar.switchPanelFrom === "function")
+                    root.hostBar.switchPanelFrom(root, direction)
             }
-            Text {
+            onActivateRequested: if (monitorButton.enabled) root.run("toggle")
+
+            Column {
+                id: details
                 width: parent.width
-                text: root.state.error ? root.state.message :
-                      (root.state.connected ? "USB connected · " + root.state.message : "USB disconnected")
-                textFormat: Text.PlainText
-                wrapMode: Text.Wrap
-                color: root.bar ? root.bar.foreground : "white"
-                font.pixelSize: Style.font.body
-            }
-            PanelSeparator { width: parent.width; foreground: root.bar ? root.bar.foreground : "white" }
-            Repeater {
-                model: [
-                    {label: "Input", value: root.state.input || "Connect Katana GO via USB"},
-                    {label: root.state.active ? "Playing through" : "Output", value: root.state.output || "No output available"},
-                    {label: "Audio", value: "Stereo · 20 ms target latency"}
-                ]
-                delegate: Column {
-                    required property var modelData
-                    width: details.width
-                    spacing: Style.space(3)
-                    Text {
-                        text: modelData.label
-                        color: root.bar ? root.bar.foreground : "white"
-                        opacity: 0.6
-                        font.pixelSize: Style.font.caption
-                    }
-                    Text {
-                        width: parent.width
-                        text: modelData.value
-                        textFormat: Text.PlainText
-                        wrapMode: Text.Wrap
-                        color: root.bar ? root.bar.foreground : "white"
-                        font.pixelSize: Style.font.body
+                spacing: Style.space(12)
+
+                Text {
+                    text: "型  Katana GO"
+                    color: root.hostBar ? root.hostBar.foreground : Commons.Color.foreground
+                    font.family: root.hostBar ? root.hostBar.fontFamily : "monospace"
+                    font.pixelSize: root.fonts.subtitle
+                    font.bold: true
+                }
+                Text {
+                    width: parent.width
+                    text: root.audioStatus.error ? root.audioStatus.message :
+                          (root.audioStatus.connected ? "USB connected · " + root.audioStatus.message : "USB disconnected")
+                    textFormat: Text.PlainText
+                    wrapMode: Text.Wrap
+                    color: root.hostBar ? root.hostBar.foreground : Commons.Color.foreground
+                    font.family: root.hostBar ? root.hostBar.fontFamily : root.fonts.family
+                    font.pixelSize: root.fonts.body
+                }
+                Ui.PanelSeparator { width: parent.width; foreground: root.hostBar ? root.hostBar.foreground : Commons.Color.foreground }
+                Repeater {
+                    model: [
+                        {label: "Input", value: root.audioStatus.input || "Connect Katana GO via USB"},
+                        {label: root.audioStatus.active ? "Playing through" : "Output", value: root.audioStatus.output || "No output available"},
+                        {label: "Audio", value: "Stereo · 20 ms target latency"}
+                    ]
+                    delegate: Column {
+                        id: infoRow
+                        required property var modelData
+                        width: details.width
+                        spacing: Style.space(3)
+                        Text {
+                            text: infoRow.modelData.label
+                            color: root.hostBar ? root.hostBar.foreground : Commons.Color.foreground
+                            opacity: 0.6
+                            font.family: root.hostBar ? root.hostBar.fontFamily : root.fonts.family
+                            font.pixelSize: root.fonts.caption
+                        }
+                        Text {
+                            width: parent.width
+                            text: infoRow.modelData.value
+                            textFormat: Text.PlainText
+                            wrapMode: Text.Wrap
+                            color: root.hostBar ? root.hostBar.foreground : Commons.Color.foreground
+                            font.family: root.hostBar ? root.hostBar.fontFamily : root.fonts.family
+                            font.pixelSize: root.fonts.body
+                        }
                     }
                 }
-            }
-            Button {
-                text: root.changingMonitoring ? "Please wait…" : root.state.routeExists ? "Stop monitoring" : "Start monitoring"
-                foreground: root.bar ? root.bar.foreground : "white"
-                enabled: !root.changingMonitoring && (root.state.routeExists || (root.state.connected && !!root.state.output))
-                onClicked: root.run("toggle")
-            }
-            Text {
-                width: parent.width
-                text: "Choose speakers or headphones in the audio menu. Restart monitoring to apply an output change."
-                wrapMode: Text.Wrap
-                color: root.bar ? root.bar.foreground : "white"
-                opacity: 0.6
-                font.pixelSize: Style.font.caption
+                Ui.Button {
+                    id: monitorButton
+                    text: root.changingMonitoring ? "Please wait…" : root.audioStatus.routeExists ? "Stop monitoring" : "Start monitoring"
+                    foreground: root.hostBar ? root.hostBar.foreground : Commons.Color.foreground
+                    enabled: !root.changingMonitoring && (!!root.audioStatus.routeExists || (!!root.audioStatus.connected && !!root.audioStatus.output))
+                    onClicked: root.run("toggle")
+                }
+                Text {
+                    width: parent.width
+                    text: "Choose speakers or headphones in the audio menu. Restart monitoring to apply an output change."
+                    wrapMode: Text.Wrap
+                    color: root.hostBar ? root.hostBar.foreground : Commons.Color.foreground
+                    opacity: 0.6
+                    font.family: root.hostBar ? root.hostBar.fontFamily : root.fonts.family
+                    font.pixelSize: root.fonts.caption
+                }
             }
         }
     }
 }
-
