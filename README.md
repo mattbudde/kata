@@ -42,7 +42,7 @@ omarchy plugin remove io.github.mattbudde.kata
 
 ## Development
 
-Run `./install` for a local installation and `./check` to validate the plugin.
+Run `./check` to validate the plugin.
 Checks require Omarchy and Qt 6's `qmllint`.
 
 ## License
