@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "local.katana-go",
+  "name": "Katana GO Monitor",
+  "version": "1.0.0",
+  "author": "kalyx",
+  "description": "Toggle BOSS Katana GO USB audio through your computer output",
+  "kinds": ["bar-widget"],
+  "entryPoints": {"barWidget": "BarWidget.qml"},
+  "barWidget": {"defaultSection": "right", "allowMultiple": false}
+}

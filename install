@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+project_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+plugin_dir="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/local.katana-go"
+for dependency in python3 pactl omarchy omarchy-shell; do
+  command -v "$dependency" >/dev/null || { echo "Missing dependency: $dependency" >&2; exit 1; }
+done
+omarchy plugin validate "$project_dir"
+mkdir -p "$plugin_dir"
+for file in manifest.json BarWidget.qml katana-go.py README.md; do
+  if [[ "$project_dir" != "$plugin_dir" ]]; then
+    install -m 644 "$project_dir/$file" "$plugin_dir/$file"
+  fi
+done
+omarchy-shell shell rescanPlugins
+omarchy plugin enable local.katana-go --section right --before omarchy.audio
