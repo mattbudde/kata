@@ -25,6 +25,8 @@ Audited on 2026-10-26 against the marketplace
   whitespace checks pass.
 - Shell summon/hide, Escape dismissal, disable/re-enable, shell restart,
   and removal/reinstallation verified on the installed desktop.
+- Fresh installation from the pushed GitHub repository through
+  `omarchy plugin add ... --enable --yes` verified using authenticated access.
 - Initial USB route creation/removal verified with the connected Katana GO.
   At audit time the amp was disconnected, so the new ID's live route creation
   was not repeated; route ownership and legacy cleanup are unit-tested.
@@ -44,7 +46,7 @@ Ready-to-use listing details:
   a compatible PulseAudio/PipeWire Pulse server, and libnotify. No root access,
   downloads, remote builds, or extra services. Stop monitoring before removal.
 
-After visibility approval, verify installation from a fresh git checkout,
-then use the marketplace submission form. The owner must confirm ownership or
+After visibility approval, verify unauthenticated public access, then use the
+marketplace submission form. The owner must confirm ownership or
 permission to submit the plugin and assets, and acknowledge that marketplace
 approval concerns listing rather than a security review.
